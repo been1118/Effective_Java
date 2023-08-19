@@ -164,4 +164,179 @@
 
 
 + 객체를 만들기 위해서는 빌더부터 만들어야한다.
-+ 빌더 패턴은 매개변수가 4개 이상은 되어야 쓸만하다.(그러나 종종 API는 시간이 지날 수록 매개변수가 많아진다고 한다. ㅎㅎ)
++ 빌더 패턴은 매개변수가 4개 이상은 되어야 쓸만하다.(그러나 종종 API는 시간이 지날 수록 매개변수가 많아진다고 한다. ㅎㅎ)  
+  
+---
+** 여기서 잠깐! effective java 의 예시 코드에 제네릭에 대해 다루는데, 제네릭에 대해 잠깐 보고 갑시다. 
+<details>
+<summary>*제네릭*</summary>
+제네릭은 다양한 타입의 객첵들을 다루는 메서드나 컬렉션 클래스에 컴파일 시의 타입을 체크해주는 기능이다. 
+
+장점 
+1. 타입 안정성을 제공한다.
+   + 타입 안정성을 높인다는 것은 의도하지 않은 타입의 객체를 저장하는 것을 막고, 저장된 객체를 꺼내올 때 원래의 타입과 다른 타입으로 형변환 되어 발생하는 오류 줄여준다는 의미
+2. 타입 체크와 형변환을 생략할 수 있어 코드가 간결해 진다. 
+
+예시)
+   ```java
+// Tv 객체만 저장할 수 있는 ArrayList 생성
+   ArrayList<Tv> tvList = new ArrayList<>();
+   tvList.add(new Tv()) // 가능 
+   tvList.add(new Audio()) // 컴파일 에러
+   ```
+
+```java
+class Box<T>{}
+```
+* Box<T> 제네릭 클래스 T의 Box or T Box 라고 읽는다. 
+* Box 는 원시 타입
+* T는 타입 변수 또는 타입 매개변수라고 한다. 
+* 타입 변수는 여러개 가능하다 예) Map<K, V> 
+
+
+이렇게 클래스의 타입을 컴파일 시점에 정하여 타입 예외에 대한 안정성을 확보할 수 있지만, 너무 자유룝다는 것이 단점이 될 수 있다. 
+예로써, 계산기 코드를 짤 때, 제네릭으로 정수, 실수 구분없이 받을 수 있게 만들었지만, 부작용으로 String도 받을 수 있을 것이다.  
+=> 따라서 의도와는 다른 자료형이 들어올 수 없게 만드는 것이 "제한된 타입 매개변수" 이다.  
+### 제한된 타입 매개변수
+```java
+class Calculator<T> {
+   void add(T a, T b){}
+   void min(T a, T b){}
+   void mul(T a, T b){}
+   void div(T a, T b){}
+}
+
+// 아래와 같이 아무 타입이나 모두 할당이 가능하다. 
+public class Main {
+   public static void main(String[] args) {
+      Calcultor<Number> cal1 = new Calculator<>();
+      Calcultor<Object> cal2 = new Calculator<>();
+      Calcultor<String> cal3 = new Calculator<>();
+   }
+}
+```
+* 타입 한정 키워드 extends를 사용하여 제네릭을 number 클래스 와 그 하위 타입만 받도록 범위를 제한할 수 있다.
+```java
+class Calculator<T extends Number> {
+   void add(T a, T b){}
+   void min(T a, T b){}
+   void mul(T a, T b){}
+   void div(T a, T b){}
+}
+
+// 아래와 같이 아무 타입이나 모두 할당이 가능하다. 
+public class Main {
+   public static void main(String[] args) {
+      Calcultor<Number> cal1 = new Calculator<>();
+      Calcultor<Integer> cal2 = new Calculator<>();
+      Calcultor<Double> cal3 = new Calculator<>();
+      
+      // extends 안에 들지 못한 클래스는 오류가 난다. 
+      Calcultor<Number> cal4 = new Calculator<>();
+      Calcultor<Object> cal5 = new Calculator<>();
+      Calcultor<String> cal6 = new Calculator<>();
+   }
+}
+```
+### 재귀적 타입 한정
+이와 비슷하지만, 조금 다른 "재귀적 타입 한정" 이란 것도 있다. 
+재귀적 타입 한정이란, 자기 자신이 들어간 표현식을 사용하여 타입 매개변수의 허용 범위를 한정시키는 것을 말한다.  
+주로 빌더 패턴에서 하위 클래스가 상위 클래스의 메서드를 오버라이드하면서 해당 하위 클래스의 타입을 반환할 필요가 있을 때 사용한다.  
+타입 매개변수 자체가 해당 클래스나 인터페이스를 참조하는 형태로 정의 된다.   
+
+  
+* 간단하게 말하면, "제한된 타입 매개변수" 는 "이 변수는 extends 뒤 타입 또는 그 하위 타입만 허용한다" 이며, "재귀적 타입 한정" 은 "이 변수는 이 클래스의 파생된 타입이어야 한다" 라는 조건을 설정하는 것이다. 
+
+</details>
+
+<details>
+<summary>이펙티브 자바 예시 코드</summary>
+
+```java
+public abstract class Pizza {
+   public enum Topping {HAM, MUSHROOM, ONION, PEPPER, SAUSAGE}
+
+   final Set<Topping> toppings;
+
+   // 재귀적 타입 한정을 이용한 추상 빌더 클래스 
+   // T 가 Builder<T> 의 하위 타입이어야 한다. 
+   // 즉 Builder<T>를 상속 받거나 자기 자신의 타입이어야 한다. 
+   abstract static class Builder<T extends Builder<T>> { 
+	   // enumset 초기화
+      EnumSet<Topping> toppings = EnumSet.noneOf(Topping.class);
+
+	  // 토핑을 추가하는 메서드, 반환 타입은 T 이며, 빌더의 하위 타입이나 빌더 자신이 된다. 
+      public T addTopping(Topping topping) {
+         toppings.add(Objects.requireNonNull(topping));
+         return self();
+      }
+
+	  // 피자 객체를 생성하고, 반환하는 추상메서드로써, 하위 클래스에서 구체적으로 구현된다. 
+      abstract Pizza build();
+	  
+	  // 현재 빌더 객체를 반환하는 추상메서드를 정의
+      protected abstract T self();
+
+   }
+   
+   // pizza의 생성자로 어떤 타입의 Builder 객체도 받아 들일 수 있다. 
+   Pizza(Builder<?> builder) {
+	   //빌더에서 피자 객체의 토핑 집합을 복제하여 초기화 
+      toppings = builder.toppings.clone();
+   }
+
+}
+
+```
+
+```java
+// NyPizza 클래스를 정의하며 Pizza 를 상속 받는다. 
+public class NyPizza extends Pizza{
+	public enum Size{SMALL, MEDIUM, LARGE}
+	private final Size size;
+
+	// NyPizza에 대한 빌더를 정의한다. Pizza.Builder 를 상속 받는데, 제네릭 타입으로 Builder 자기 자신을 지정하고 있다.
+	public static class Builder extends Pizza.Builder<Builder> {
+
+		private final Size size;
+
+		// 빌더의 생성자를 정의하고, 피자의 크기를 받는다. 
+		public Builder(Size size) {
+			// Null 이 아닌 크기를 변수에 할당
+			this.size = Objects.requireNonNull(size);
+		}
+
+		@Override
+        // 피자 객체를 생성하고, 반환하는 메서드를 구체적으로 구현
+		public NyPizza build(){
+			return new NyPizza(this);
+		}
+
+		@Override
+        //현재 빌더 객체를 반환하는 메서드를 구체적으로 구현
+		protected Builder self(){
+			return this;
+		}
+	}
+
+	// NyPizza의 private 생성자이다. 빌더 객체를 통해서만 NyPizza 객체를 생성할 수 있다. 
+	private NyPizza(Builder builder) {
+		super(builder);
+		size = builder.size;
+	}
+}
+```  
+```java
+public class PizzaChoice {
+	// 빌더를 설정한 후 아래와 같이 사용 가능 
+	NyPizza pizza = new NyPizza.Builder(Size.SMALL)
+		.addTopping(Topping.SAUSAGE).addTopping(Topping.ONION).build();
+}
+```
+  
+   * "Pizza" 의 "Builder" 클래스에서 T의 구체적인 타입은 Builder 클래스나 그 하위 클래스를 참조해야한다. 
+   * 여기서 "NyPizza.Builder" 는 "Pizza.Builder<Builder>" 를 확장하므로, "NyPizza.Builder" 는 "Pizza.Builder<T>" 의 하위 타입이다. 
+   * T는 "NyPizza.Builder"로 구체화 된다. 
+</details>
+
+* 하위 타입이란 특정 클래스나 인터페이스를 상속받거나 구현한 다른 클래스를 말한다. 
